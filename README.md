@@ -12,8 +12,6 @@ Search: MCTS (No costly random rollouts; uses Value Head for rapid evaluation).
 Project Structure
 This structure separates the core logic (src/) from configuration, data, and model checkpoints.
 
-
-
 ```
 Deep_Chess_Project/
 ├── data/
