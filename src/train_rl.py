@@ -118,9 +118,6 @@ class AlphaZeroTrainer:
         return from_sq * 64 + to_sq
     
     def train_on_batch(self, batch):
-        """
-        Train model trên một batch từ Replay Buffer
-        """
         self.model.train()
         
         states, policies, values = zip(*batch)
@@ -128,15 +125,11 @@ class AlphaZeroTrainer:
         policies = torch.stack([torch.FloatTensor(p) for p in policies]).to(self.device)
         values = torch.FloatTensor(values).unsqueeze(1).to(self.device)
         
-        # Forward pass
         policy_pred, value_pred = self.model(states)
-        
-        # Compute loss
         loss, policy_loss, value_loss = self.combined_loss(
             policy_pred, value_pred, policies, values
         )
         
-        # Backward pass
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
@@ -145,39 +138,27 @@ class AlphaZeroTrainer:
         return loss.item(), policy_loss.item(), value_loss.item()
     
     def train_epoch(self, num_games=100, mcts_simulations=800, batch_size=64, epochs_per_iteration=10):
-        """
-        Một iteration của AlphaZero training:
-        1. Self-Play để sinh dữ liệu
-        2. Train trên dữ liệu đó
-        """
-        print(f"\n=== Self-Play: Generating {num_games} games ===")
+        print(f"\n=== Self-Play: {num_games} games ===")
         
-        # Phase 1: Self-Play
         self.model.eval()
         with torch.no_grad():
             for i in tqdm(range(num_games)):
                 samples = self.self_play_game(mcts_simulations=mcts_simulations)
                 self.replay_buffer.add_batch(samples)
         
-        print(f"Replay Buffer size: {len(self.replay_buffer)}")
+        print(f"Buffer size: {len(self.replay_buffer)}")
         
-        # Phase 2: Training
-        print(f"\n=== Training on Self-Play Data ===")
+        print(f"\n=== Training ===")
         for epoch in range(epochs_per_iteration):
-            # Sample từ replay buffer
             batch = self.replay_buffer.sample(batch_size)
-            
             loss, policy_loss, value_loss = self.train_on_batch(batch)
             
             if epoch % 10 == 0:
-                print(f"Epoch {epoch}: Loss={loss:.4f}, Policy Loss={policy_loss:.4f}, Value Loss={value_loss:.4f}")
+                print(f"Epoch {epoch}: Loss={loss:.4f}, P={policy_loss:.4f}, V={value_loss:.4f}")
     
     def train(self, num_iterations=100, games_per_iteration=100, save_interval=10):
-        """
-        Main training loop cho AlphaZero RL
-        """
         print("="*60)
-        print("Starting AlphaZero RL Training Loop")
+        print("AlphaZero RL Training")
         print("="*60)
         
         for iteration in range(num_iterations):
@@ -185,59 +166,46 @@ class AlphaZeroTrainer:
             print(f"Iteration {iteration + 1}/{num_iterations}")
             print(f"{'='*60}")
             
-            # Train một iteration
             self.train_epoch(num_games=games_per_iteration)
             
-            # Save checkpoint
             if (iteration + 1) % save_interval == 0:
                 self.save_checkpoint(f"models/model_rl_iter_{iteration+1}.pth")
         
-        print("\n" + "="*60)
-        print("Training completed!")
-        print("="*60)
+        print("\nTraining completed!")
     
     def save_checkpoint(self, path):
-        """Lưu model checkpoint"""
         os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'replay_buffer_size': len(self.replay_buffer)
         }, path)
-        print(f"Checkpoint saved to {path}")
+        print(f"Saved: {path}")
     
     def load_checkpoint(self, path):
-        """Load model checkpoint"""
         checkpoint = torch.load(path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        print(f"Checkpoint loaded from {path}")
+        print(f"Loaded: {path}")
 
 
 def main():
-    """
-    Main function để chạy AlphaZero RL Training
-    """
-    # Hyperparameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using device: {device}")
+    print(f"Device: {device}")
     
-    # Load model từ Phase 1 (Supervised Learning)
     model = SmallResNet(
         input_channels=32,
         num_res_blocks=5,
         action_space_size=4672
     )
     
-    # Load pretrained weights từ supervised training
-    supervised_model_path = "models/model_supervised.pth"
-    if os.path.exists(supervised_model_path):
-        print(f"Loading supervised model from {supervised_model_path}")
-        model.load_state_dict(torch.load(supervised_model_path, map_location=device))
+    supervised_path = "models/model_supervised.pth"
+    if os.path.exists(supervised_path):
+        print(f"Loading: {supervised_path}")
+        model.load_state_dict(torch.load(supervised_path, map_location=device))
     else:
-        print("Warning: No supervised model found. Starting from scratch.")
+        print("Warning: No supervised model found")
     
-    # Khởi tạo Trainer
     trainer = AlphaZeroTrainer(
         model=model,
         device=device,
@@ -245,16 +213,14 @@ def main():
         weight_decay=1e-4
     )
     
-    # Bắt đầu training
     trainer.train(
         num_iterations=100,
-        games_per_iteration=50,  # Số games self-play mỗi iteration
+        games_per_iteration=50,
         save_interval=5
     )
     
-    # Save final model
     trainer.save_checkpoint("models/model_rl_final.pth")
-    print("\nTraining complete! Model saved to models/model_rl_final.pth")
+    print("\nDone!")
 
 
 if __name__ == '__main__':
