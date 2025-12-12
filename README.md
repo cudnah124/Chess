@@ -1,3 +1,15 @@
+#Train/RL Bot vs Random/RL Bot vs Minimax: 
+
+- src/train/rl_train.ipynb: 
+#Cell 11: Benchmark Random Bot
+#Cell 12: Benchmark Minimax Bot
+
+#Play Human vs Bot:
+
+```bash
+python src/play.py
+```
+
 # Chess
 
 This project focuses on processing and analyzing large-scale chess game data, with an emphasis on applying machine learning and deep learning techniques.
