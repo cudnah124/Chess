@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #Chess RL:
 
 #Train/RL Bot vs Random/RL Bot vs Minimax: 
@@ -6,6 +7,14 @@
 #Cell 11: Benchmark Random Bot
 #Cell 12: Benchmark Minimax Bot
 
+=======
+#Train/RL Bot vs Random/RL Bot vs Minimax: 
+
+- src/train/rl_train.ipynb: 
+#Cell 11: Benchmark Random Bot
+#Cell 12: Benchmark Minimax Bot
+
+>>>>>>> e3077a750952d1ab09f6ab5ac41313b66f8a2ce7
 #Play Human vs Bot:
 
 ```bash
