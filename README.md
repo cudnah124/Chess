@@ -1,35 +1,49 @@
-Phase I (Static Learning): The model is initialized via Imitation Learning (Supervised Training) on high-quality human PGN data. This creates a stable baseline policy before entering the dynamic RL phase.
+#Chess RL:
 
-Phase II (Dynamic RL): The engine enters a Self-Play loop, where the network's policy is continuously refined using MCTS-generated data.
+#Train/RL Bot vs Random/RL Bot vs Minimax: 
 
-Key Features
-Architecture: Optimized Small ResNet backbone (5-6 blocks) for memory efficiency.
+- src/train/rl_train.ipynb: 
+#Cell 11: Benchmark Random Bot
+#Cell 12: Benchmark Minimax Bot
 
-Input: Custom 32-channel tensor capturing T-1 move history and auxiliary game state (castling rights, repetition count).
+#Play Human vs Bot:
 
-Search: MCTS (No costly random rollouts; uses Value Head for rapid evaluation).
-
-Project Structure
-This structure separates the core logic (src/) from configuration, data, and model checkpoints.
-
+```bash
+python src/play.py
 ```
-Deep_Chess_Project/
-├── data/
-│   ├── raw_pgn/              # Raw PGN files (Human Games)
-│   └── processed/            # Serialized Tensor data (.npz, .h5)
-│
-├── src/
-│   ├── config.py             # Hyperparameters (Batch size, LR, ResBlocks)
-│   ├── model.py              # SmallResNet Class (PyTorch)
-│   ├── parse_game.py         # Data parser (PGN -> 32-Channel Tensor)
-│   ├── mcts.py               # Monte Carlo Tree Search Logic
-│   ├── train_supervised.py   # Code for Phase I (Imitation Learning)
-│   ├── train_rl.py           # Code for Phase II (RL Self-Play Loop)
-│   └── play.py               # Game Interface / Engine Testing
-│
-├── models/                   # Model Checkpoints
-│   ├── model_supervised.pth  # Baseline model from Phase I
-│   └── model_rl.pth          # Best performing RL model
-│
-└── requirements.txt          # Dependencies: torch, python-chess, numpy
-```
+
+# Chess
+
+This project focuses on processing and analyzing large-scale chess game data, with an emphasis on applying machine learning and deep learning techniques.
+
+## Data Source
+
+- Games are sourced from the [FICS Games Database](https://www.ficsgames.org/download.html) in PGN format.
+- Data is pre-processed: invalid games are removed, move formats are standardized (PGN/FEN), and metadata (player ratings, results, openings) is extracted for downstream tasks such as classification and move prediction.
+
+## References
+
+- [Learning to Play Chess via Deep Reinforcement Learning](https://arxiv.org/pdf/1712.01815)
+- [Deep Learning for Chess](https://erikbern.com/2014/11/29/deep-learning-for-chess)
+- [Wikimedia Commons - PNG Chess Pieces](https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent)
+
+## Main Features
+
+- Bulk PGN import and cleaning.
+- Parsing and extraction of moves, board states, and player metadata.
+- Generation of ML-ready datasets.
+- Basic statistical analysis of games, such as opening frequency and rating distribution.
+
+## Future Work
+
+- Develop neural network models for move prediction and evaluation.
+- Implement a full training pipeline for large datasets.
+
+## Getting Started
+
+1. Download data from the [FICS Games Database](https://www.ficsgames.org/download.html).
+2. Run scripts in `src/preprocessing/` for cleaning and `src/features/` for feature extraction.
+
+---
+
+Contact [cudnah124](https://github.com/cudnah124) for questions or suggestions.

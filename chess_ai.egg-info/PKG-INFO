@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: chess_ai
+Version: 0.1.0
+Requires-Python: >=3.8
+Requires-Dist: torch>=2.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: python-chess>=1.999
+Requires-Dist: tqdm>=4.65.0
+Requires-Dist: pyyaml>=6.0
+Dynamic: requires-dist
+Dynamic: requires-python
