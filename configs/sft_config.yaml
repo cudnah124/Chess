@@ -1,0 +1,19 @@
+# Model# Architecture (IMMUTABLE - must match across SFT and RL)
+NUM_RES_BLOCKS: 6
+NUM_CHANNELS: 64
+ACTION_SIZE: 4672
+INPUT_CHANNELS: 32
+
+# SFT Hyperparameters
+sft_lr: 0.001
+sft_batch_size: 256
+sft_epochs: 5  # Reduced for testing
+weight_decay: 0.0001
+
+# Data
+max_games: 500  # Reduced for testing
+pgn_paths:
+  - "data/ficsgamesdb_2000_standard2000_nomovetimes_971033.pgn"
+
+# Paths
+base_path: "models"

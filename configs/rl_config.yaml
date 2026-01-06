@@ -1,0 +1,24 @@
+# Model# Architecture (IMMUTABLE - must match SFT)
+NUM_RES_BLOCKS: 6
+NUM_CHANNELS: 64
+ACTION_SIZE: 4672
+INPUT_CHANNELS: 32
+
+# RL Hyperparameters
+rl_lr: 0.00005
+rl_batch_size: 64
+rl_iterations: 10  # Reduced for testing
+games_per_iter: 5  # Reduced for testing
+rl_num_simulations: 50  # Reduced for testing
+c_puct: 1.5
+dirichlet_alpha: 0.3
+dirichlet_epsilon: 0.25
+weight_decay: 0.0001
+
+# Evaluation
+eval_games: 20  # Reduced for testing
+eval_interval: 5
+
+# Paths
+base_path: "models"
+sft_checkpoint_path: "models/sft_best.pth"
