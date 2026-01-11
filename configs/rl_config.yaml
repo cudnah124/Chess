@@ -14,6 +14,7 @@ c_puct: 1.5
 dirichlet_alpha: 0.3
 dirichlet_epsilon: 0.25
 weight_decay: 0.0001
+num_workers: 8  # Parallel self-play workers (set to 1 for sequential)
 
 # Evaluation
 eval_games: 20  # Reduced for testing

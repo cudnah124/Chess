@@ -1,4 +1,4 @@
 """RL package initialization"""
-from .trainer import AlphaZeroTrainer, AlphaZeroLoss
+from .trainer import AlphaZeroLoss
 
-__all__ = ['AlphaZeroTrainer', 'AlphaZeroLoss']
+__all__ = ['AlphaZeroLoss']

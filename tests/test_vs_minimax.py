@@ -8,11 +8,14 @@ sys.path.insert(0, os.path.abspath('..'))
 import torch
 import chess
 import random
+import numpy as np
 from core.config import Config
 from core.models.resnet import SmallResNet
 from core.chess_logic.move_encoding import CanonicalMoveEncoder
 from core.chess_logic.board_encoding import BoardEncoder
 from core.utils.checkpoint import load_checkpoint
+from rl.mcts.search import MCTS
+from rl.mcts.search import MCTS
 
 
 class MinimaxPlayer:
@@ -109,43 +112,85 @@ class MinimaxPlayer:
                     best_move = move
         
         return best_move if best_move else random.choice(legal_moves)
+       
 
 
 class NeuralPlayer:
-    """Neural network chess player"""
+    """Neural network chess player with MCTS"""
     
-    def __init__(self, model, config, device='cpu'):
+    def __init__(self, model, config, device='cpu', use_mcts=True, num_simulations=50, temperature=0.1):
+        """
+        Args:
+            model: Neural network model
+            config: Configuration object
+            device: Device to run on
+            use_mcts: Whether to use MCTS (True) or pure policy (False)
+            num_simulations: Number of MCTS simulations per move
+            temperature: Temperature for move selection (lower = more deterministic)
+        """
         self.model = model
         self.config = config
         self.device = device
         self.move_encoder = CanonicalMoveEncoder()
         self.board_encoder = BoardEncoder()
         self.model.eval()
+        
+        # MCTS configuration
+        self.use_mcts = use_mcts
+        self.num_simulations = num_simulations
+        self.temperature = temperature
+        
+        if use_mcts:
+            self.mcts = MCTS(model, config, device)
     
     def get_move(self, board, prev_board=None):
-        """Get move from neural network"""
+        """Get move from neural network (with or without MCTS)"""
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return None
         
-        state = self.board_encoder.encode(board, prev_board)
-        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        
-        with torch.no_grad():
-            policy_logits, _ = self.model(state_tensor)
-            policy = torch.softmax(policy_logits, dim=1).cpu().numpy()[0]
-        
-        move_probs = []
-        for move in legal_moves:
-            move_idx = self.move_encoder.encode_move(move.uci())
-            prob = policy[move_idx] if move_idx is not None else 0.0
-            move_probs.append((move, prob))
-        
-        if sum(p for _, p in move_probs) > 0:
-            move_probs.sort(key=lambda x: x[1], reverse=True)
-            return move_probs[0][0]
+        if self.use_mcts:
+            # Use MCTS for stronger play
+            action_probs = self.mcts.search(
+                board=board,
+                num_simulations=self.num_simulations,
+                temperature=self.temperature,
+                prev_board=prev_board,
+                root_noise=False  # No exploration noise during evaluation
+            )
+            
+            # Select move with highest probability
+            move_probs = []
+            for move in legal_moves:
+                move_idx = self.move_encoder.encode_move(move.uci())
+                prob = action_probs[move_idx] if move_idx is not None else 0.0
+                move_probs.append((move, prob))
+            
+            if sum(p for _, p in move_probs) > 0:
+                move_probs.sort(key=lambda x: x[1], reverse=True)
+                return move_probs[0][0]
+            else:
+                return random.choice(legal_moves)
         else:
-            return random.choice(legal_moves)
+            # Pure policy network (weaker)
+            state = self.board_encoder.encode(board, prev_board)
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            
+            with torch.no_grad():
+                policy_logits, _ = self.model(state_tensor)
+                policy = torch.softmax(policy_logits, dim=1).cpu().numpy()[0]
+            
+            move_probs = []
+            for move in legal_moves:
+                move_idx = self.move_encoder.encode_move(move.uci())
+                prob = policy[move_idx] if move_idx is not None else 0.0
+                move_probs.append((move, prob))
+            
+            if sum(p for _, p in move_probs) > 0:
+                move_probs.sort(key=lambda x: x[1], reverse=True)
+                return move_probs[0][0]
+            else:
+                return random.choice(legal_moves)
 
 
 def play_game(white_player, black_player, max_moves=200, verbose=False):
@@ -201,8 +246,11 @@ def play_game(white_player, black_player, max_moves=200, verbose=False):
         return 0.5  # Draw
 
 
-def evaluate_vs_minimax(checkpoint_path, num_games=20, minimax_depth=3, verbose=False):
-    """Evaluate trained model vs Minimax"""
+def evaluate_vs_minimax(checkpoint_path, num_games=20, minimax_depth=3, 
+                        use_mcts=True, num_simulations=50, temperature=0.1, verbose=False):
+    """
+    Evaluate trained model vs Minimax
+    """
     print(f"Loading model from: {checkpoint_path}")
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -211,10 +259,17 @@ def evaluate_vs_minimax(checkpoint_path, num_games=20, minimax_depth=3, verbose=
     model = SmallResNet(config).to(device)
     load_checkpoint(model, checkpoint_path, expected_action_size=4672, device=device)
     
-    neural_player = NeuralPlayer(model, config, device)
+    neural_player = NeuralPlayer(
+        model, config, device, 
+        use_mcts=use_mcts, 
+        num_simulations=num_simulations, 
+        temperature=temperature
+    )
     minimax_player = MinimaxPlayer(depth=minimax_depth)
     
+    mcts_status = f"with MCTS ({num_simulations} sims)" if use_mcts else "pure policy (no MCTS)"
     print(f"\nEvaluating: {num_games} games vs Minimax (depth={minimax_depth})")
+    print(f"Neural player mode: {mcts_status}")
     print(f"{'='*60}")
     
     # Neural as White
@@ -263,9 +318,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Evaluate model vs Minimax')
     parser.add_argument('checkpoint', help='Path to model checkpoint')
     parser.add_argument('--games', type=int, default=20, help='Number of games')
-    parser.add_argument('--depth', type=int, default=3, help='Minimax search depth')
+    parser.add_argument('--depth', type=int, default=2, help='Minimax search depth')
+    parser.add_argument('--no-mcts', action='store_true', help='Disable MCTS (use pure policy)')
+    parser.add_argument('--simulations', type=int, default=50, help='Number of MCTS simulations per move')
+    parser.add_argument('--temperature', type=float, default=0.1, help='Temperature for move selection')
     parser.add_argument('--verbose', action='store_true', help='Show moves during games')
     
     args = parser.parse_args()
     
-    evaluate_vs_minimax(args.checkpoint, args.games, args.depth, args.verbose)
+    evaluate_vs_minimax(
+        args.checkpoint, 
+        args.games, 
+        args.depth, 
+        use_mcts=not args.no_mcts,
+        num_simulations=args.simulations,
+        temperature=args.temperature,
+        verbose=args.verbose
+    )
+
